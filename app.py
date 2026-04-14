@@ -6,16 +6,49 @@ import os
 
 st.set_page_config(page_title="Churn Dashboard", layout="wide")
 
-st.title("📡 Customer Churn Prediction Dashboard")
-st.caption("End-to-end ML project: EDA → Model → Insights → Prediction")
+# ---------- THEME ----------
+st.markdown("""
+<style>
+body {
+    background-color: #0f172a;
+    color: white;
+}
+.block-container {
+    padding-top: 2rem;
+}
+.card {
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0px 4px 25px rgba(0,0,0,0.4);
+}
+.metric {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+}
+.section {
+    font-size: 22px;
+    font-weight: 600;
+    margin-top: 20px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------- HEADER ----------
+st.title("📡 Customer Churn Dashboard")
+st.caption("EDA • ML Model • Business Insights • Prediction")
 st.markdown("---")
 
+# ---------- PATHS ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATA_PATH = os.path.join(BASE_DIR, "data", "churn_data.csv")
 MODEL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
 COLUMNS_PATH = os.path.join(BASE_DIR, "model", "columns.pkl")
 SCALER_PATH = os.path.join(BASE_DIR, "model", "scaler.pkl")
+
 EDA_CHURN = os.path.join(BASE_DIR, "EDA", "eda_churn_count.png")
 EDA_CONTRACT = os.path.join(BASE_DIR, "EDA", "eda_contract.png")
 EDA_TENURE = os.path.join(BASE_DIR, "EDA", "eda_tenure.png")
@@ -23,6 +56,7 @@ EDA_MONTHLY = os.path.join(BASE_DIR, "EDA", "eda_monthly_charges.png")
 EDA_CORR = os.path.join(BASE_DIR, "EDA", "eda_correlation.png")
 EDA_SUPPORT = os.path.join(BASE_DIR, "EDA", "eda_tech_support.png")
 
+# ---------- LOAD ----------
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_PATH)
@@ -40,100 +74,67 @@ def load_model():
 
 model, columns, scaler = load_model()
 
-try:
-    importance = model.feature_importances_
-    feat_imp = pd.DataFrame({
-        "Feature": columns,
-        "Importance": importance
-    }).sort_values("Importance", ascending=False)
-except:
-    coef = model.coef_[0]
-    feat_imp = pd.DataFrame({
-        "Feature": columns,
-        "Importance": abs(coef)
-    }).sort_values("Importance", ascending=False)
-
-top_features = feat_imp.head(5)["Feature"].tolist()
-
+# ---------- METRICS ----------
 churn_df = df[df["Churn"] == "Yes"]
-stay_df  = df[df["Churn"] == "No"]
+stay_df = df[df["Churn"] == "No"]
 
 total_customers = len(df)
-total_churned   = len(churn_df)
-total_stayed    = len(stay_df)
-churn_rate      = total_churned / total_customers * 100
+total_churned = len(churn_df)
+total_stayed = len(stay_df)
+churn_rate = total_churned / total_customers * 100
 
-avg_tenure_churn = churn_df["tenure"].mean()
-avg_tenure_stay  = stay_df["tenure"].mean()
-
-avg_charges_churn = churn_df["MonthlyCharges"].mean()
-avg_charges_stay  = stay_df["MonthlyCharges"].mean()
-
-contract_churn = churn_df["Contract"].value_counts()
-most_churn_contract = contract_churn.idxmax()
-
+# ---------- TABS ----------
 tab1, tab2 = st.tabs(["📊 Dashboard", "🎯 Prediction"])
 
+# =========================
+# 📊 DASHBOARD
+# =========================
 with tab1:
 
-    st.header("Business Insights Dashboard")
+    st.markdown('<div class="section">📊 Business Overview</div>', unsafe_allow_html=True)
 
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Customers", f"{total_customers:,}")
-    k2.metric("Churned", f"{total_churned:,}")
-    k3.metric("Retained", f"{total_stayed:,}")
-    k4.metric("Churn Rate", f"{churn_rate:.1f}%")
-
-    st.markdown("---")
-
-    # 1️⃣ Churn & Contract
-    st.subheader("1️⃣ Churn & Contract Analysis")
-    col1, col2 = st.columns(2)
-
-    col1.image(EDA_CHURN, use_container_width=True)
-    col2.image(EDA_CONTRACT, use_container_width=True)
-
-    st.info("""
- Insight:
-- Month-to-month customers show the highest churn
-- Long-term contracts improve retention
- Recommendation: Encourage long-term plans with discounts
-""")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.markdown(f'<div class="metric"><h2>{total_customers}</h2><p>Total</p></div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="metric"><h2 style="color:#ef4444;">{total_churned}</h2><p>Churned</p></div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="metric"><h2 style="color:#22c55e;">{total_stayed}</h2><p>Retained</p></div>', unsafe_allow_html=True)
+    c4.markdown(f'<div class="metric"><h2>{churn_rate:.1f}%</h2><p>Churn Rate</p></div>', unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # Tenure & Charges
-    st.subheader("2️⃣ Tenure & Charges")
+    # Section 1
+    st.markdown("### 📉 Churn Distribution & Contracts")
     col1, col2 = st.columns(2)
+    col1.image(EDA_CHURN, width="stretch")
+    col2.image(EDA_CONTRACT, width="stretch")
 
-    col1.image(EDA_TENURE, use_container_width=True)
-    col2.image(EDA_MONTHLY, use_container_width=True)
-
-    st.info("""
- Insight:
-- Low tenure customers churn more
-- High monthly charges increase churn risk
-Recommendation: Focus on early retention offers
-""")
+    st.success("💡 Month-to-month customers have highest churn → push long-term plans")
 
     st.markdown("---")
 
-    # 3Correlation & Support
-    st.subheader("3️⃣ Correlation & Support")
+    # Section 2
+    st.markdown("### 💰 Tenure & Charges Impact")
     col1, col2 = st.columns(2)
+    col1.image(EDA_TENURE, width="stretch")
+    col2.image(EDA_MONTHLY, width="stretch")
 
-    col1.image(EDA_CORR, use_container_width=True)
-    col2.image(EDA_SUPPORT, use_container_width=True)
+    st.warning("⚠️ Low tenure + high charges = highest churn risk")
 
-    st.info("""
-Insight:
-- Tenure negatively correlates with churn
-- Lack of tech support increases churn
- Recommendation: Improve support services
-""")
+    st.markdown("---")
+
+    # Section 3
+    st.markdown("### 🧠 Behavioral Insights")
+    col1, col2 = st.columns(2)
+    col1.image(EDA_CORR, width="stretch")
+    col2.image(EDA_SUPPORT, width="stretch")
+
+    st.info("📞 Lack of tech support strongly correlates with churn")
+
+# =========================
+# 🎯 PREDICTION
+# =========================
 with tab2:
 
-    st.header("🎯 Predict Customer Churn")
+    st.markdown('<div class="section">🎯 Predict Customer Churn</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
@@ -146,60 +147,61 @@ with tab2:
         internet = st.selectbox("Internet", ["DSL", "Fiber optic", "No"])
         gender = st.selectbox("Gender", ["Male", "Female"])
 
-    if st.button("Predict"):
+    if st.button("🚀 Predict"):
 
         input_data = pd.DataFrame([np.zeros(len(columns))], columns=columns)
 
-        raw = pd.DataFrame([[tenure, monthly, tenure*monthly]],
-                           columns=["tenure","MonthlyCharges","TotalCharges"])
+        # ---------- NUMERICAL ----------
+        raw = pd.DataFrame([[tenure, monthly, tenure * monthly]],
+                           columns=["tenure", "MonthlyCharges", "TotalCharges"])
         scaled = scaler.transform(raw)
 
         input_data["tenure"] = scaled[0][0]
         input_data["MonthlyCharges"] = scaled[0][1]
         input_data["TotalCharges"] = scaled[0][2]
 
-        input_data["gender"] = 1 if gender == "Female" else 0
+        # ---------- GENDER ----------
+        if "gender" in input_data.columns:
+            input_data["gender"] = 1 if gender == "Female" else 0
 
-        if contract == "One year":
-            input_data["Contract_One year"] = 1
-        elif contract == "Two year":
-            input_data["Contract_Two year"] = 1
+        # ---------- CONTRACT ----------
+        for col in columns:
+            if "Contract_" in col:
+                input_data[col] = 0
 
-        if internet == "Fiber optic":
-            input_data["InternetService_Fiber optic"] = 1
-        elif internet == "No":
-            input_data["InternetService_No"] = 1
+        contract_col = f"Contract_{contract}"
+        if contract_col in input_data.columns:
+            input_data[contract_col] = 1
 
+        # ---------- INTERNET (FIXED) ----------
+        for col in columns:
+            if "InternetService_" in col:
+                input_data[col] = 0
+
+        internet_col = f"InternetService_{internet}"
+        if internet_col in input_data.columns:
+            input_data[internet_col] = 1
+
+        # ---------- FINAL ALIGNMENT ----------
+        input_data = input_data[columns]
+
+        # ---------- PREDICT ----------
         pred = model.predict(input_data)[0]
         prob = model.predict_proba(input_data)[0][1] * 100
 
-        #Reason logic
-        reason = []
-
-        if tenure < 12:
-            reason.append("Low tenure (new customer)")
-
-        if monthly > 80:
-            reason.append("High monthly charges")
-
-        if contract == "Month-to-month":
-            reason.append("Flexible contract (higher churn risk)")
-
-        if internet == "Fiber optic":
-            reason.append("Fiber users tend to churn more")
+        st.markdown("---")
 
         if pred == 1:
-            st.error(f"⚠️ Likely to CHURN ({prob:.1f}%)")
-
-            if reason:
-                st.warning("Possible Reasons:")
-                for r in reason:
-                    st.write(f"• {r}")
-
+            st.markdown(f"""
+            <div class="card">
+                <h2 style="color:#ef4444;">⚠️ High Churn Risk</h2>
+                <h3>{prob:.1f}% probability</h3>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.success(f"Likely to STAY ({prob:.1f}%)")
-
-            if reason:
-                st.info("Risk Factors to Monitor:")
-                for r in reason:
-                    st.write(f"• {r}")
+            st.markdown(f"""
+            <div class="card">
+                <h2 style="color:#22c55e;">✅ Customer Likely to Stay</h2>
+                <h3>{prob:.1f}% probability</h3>
+            </div>
+            """, unsafe_allow_html=True)
