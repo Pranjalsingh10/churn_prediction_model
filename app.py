@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
+import joblib
 import os
+import preprocess  # IMPORTANT for model loading
 
 st.set_page_config(page_title="Churn Dashboard", layout="wide")
 
@@ -49,14 +50,15 @@ MODEL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
 COLUMNS_PATH = os.path.join(BASE_DIR, "model", "columns.pkl")
 SCALER_PATH = os.path.join(BASE_DIR, "model", "scaler.pkl")
 
-EDA_CHURN = os.path.join(BASE_DIR, "EDA", "eda_churn_count.png")
-EDA_CONTRACT = os.path.join(BASE_DIR, "EDA", "eda_contract.png")
-EDA_TENURE = os.path.join(BASE_DIR, "EDA", "eda_tenure.png")
-EDA_MONTHLY = os.path.join(BASE_DIR, "EDA", "eda_monthly_charges.png")
-EDA_CORR = os.path.join(BASE_DIR, "EDA", "eda_correlation.png")
-EDA_SUPPORT = os.path.join(BASE_DIR, "EDA", "eda_tech_support.png")
+# ⚠️ FIXED: lowercase 'eda'
+EDA_CHURN = os.path.join(BASE_DIR, "eda", "eda_churn_count.png")
+EDA_CONTRACT = os.path.join(BASE_DIR, "eda", "eda_contract.png")
+EDA_TENURE = os.path.join(BASE_DIR, "eda", "eda_tenure.png")
+EDA_MONTHLY = os.path.join(BASE_DIR, "eda", "eda_monthly_charges.png")
+EDA_CORR = os.path.join(BASE_DIR, "eda", "eda_correlation.png")
+EDA_SUPPORT = os.path.join(BASE_DIR, "eda", "eda_tech_support.png")
 
-# ---------- LOAD ----------
+# ---------- LOAD DATA ----------
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_PATH)
@@ -65,11 +67,12 @@ def load_data():
 
 df = load_data()
 
+# ---------- LOAD MODEL ----------
 @st.cache_resource
 def load_model():
-    model = pickle.load(open(MODEL_PATH, "rb"))
-    columns = pickle.load(open(COLUMNS_PATH, "rb"))
-    scaler = pickle.load(open(SCALER_PATH, "rb"))
+    model = joblib.load(MODEL_PATH)
+    columns = joblib.load(COLUMNS_PATH)
+    scaler = joblib.load(SCALER_PATH)
     return model, columns, scaler
 
 model, columns, scaler = load_model()
@@ -101,31 +104,28 @@ with tab1:
 
     st.markdown("---")
 
-    # Section 1
     st.markdown("### 📉 Churn Distribution & Contracts")
     col1, col2 = st.columns(2)
-    col1.image(EDA_CHURN, width="stretch")
-    col2.image(EDA_CONTRACT, width="stretch")
+    col1.image(EDA_CHURN, use_container_width=True)
+    col2.image(EDA_CONTRACT, use_container_width=True)
 
     st.success("💡 Month-to-month customers have highest churn → push long-term plans")
 
     st.markdown("---")
 
-    # Section 2
     st.markdown("### 💰 Tenure & Charges Impact")
     col1, col2 = st.columns(2)
-    col1.image(EDA_TENURE, width="stretch")
-    col2.image(EDA_MONTHLY, width="stretch")
+    col1.image(EDA_TENURE, use_container_width=True)
+    col2.image(EDA_MONTHLY, use_container_width=True)
 
     st.warning("⚠️ Low tenure + high charges = highest churn risk")
 
     st.markdown("---")
 
-    # Section 3
     st.markdown("### 🧠 Behavioral Insights")
     col1, col2 = st.columns(2)
-    col1.image(EDA_CORR, width="stretch")
-    col2.image(EDA_SUPPORT, width="stretch")
+    col1.image(EDA_CORR, use_container_width=True)
+    col2.image(EDA_SUPPORT, use_container_width=True)
 
     st.info("📞 Lack of tech support strongly correlates with churn")
 
@@ -173,7 +173,7 @@ with tab2:
         if contract_col in input_data.columns:
             input_data[contract_col] = 1
 
-        # ---------- INTERNET (FIXED) ----------
+        # ---------- INTERNET ----------
         for col in columns:
             if "InternetService_" in col:
                 input_data[col] = 0
